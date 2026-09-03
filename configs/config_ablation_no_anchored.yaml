@@ -1,0 +1,62 @@
+# Feature ablation: identical to config.yaml except that D*_anchored features
+# are excluded. Run with:
+#   python scripts/train.py --config configs/config_ablation_no_anchored.yaml #       --models lightgbm --no-tune --skip-holdout
+
+split:
+  # Chronological tail holdout. Verified feasible: TransactionDT is
+  # non-null, non-negative, already monotonic in file order, spans 182
+  # contiguous days with no missing day, and zero rows sit exactly on the
+  # 80th-percentile cut.
+  holdout_fraction: 0.20
+  validation_fraction: 0.20
+  # Purged forward-chaining CV inside the training period.
+  n_cv_folds: 5
+  # Gap between a fold's train edge and its validation start, in days. Must be
+  # >= the longest velocity look-back window (168 h = 7 d) so trailing
+  # aggregates cannot straddle the boundary.
+  purge_days: 7
+  strategy: temporal
+
+features:
+  # Decision: keep all 339 V columns for the baseline. Redundancy is removed
+  # later on the evidence of SHAP + validation, not on a prior guess.
+  keep_all_v_columns: true
+  velocity_windows_hours: [1, 24, 168]
+  frequency_encode_min_count: 2
+  anchor_d_columns: true
+  # ABLATION: drop the D*_anchored features to measure what anchoring the D
+  # columns to a per-entity reference point actually contributes. Everything
+  # else is identical to configs/config.yaml so the delta is attributable.
+  exclude_feature_suffixes: ["_anchored"]
+
+train:
+  # PR-AUC, not ROC-AUC: at 3.4993% prevalence the 569,877 negatives swamp the
+  # FPR denominator, so ROC-AUC is insensitive to false-positive volume, which
+  # is the cost that dominates fraud review.
+  primary_metric: pr_auc
+  seed: 42
+  n_jobs: -1
+  optuna_trials: 25
+  # Raised from 1800s: the previous run completed only 5 of 25 trials before the
+  # timeout, with a 0.0477 PR-AUC spread across those five - clear evidence the
+  # search space was under-explored rather than converged.
+  optuna_timeout_seconds: 5400
+  calibrate: true
+
+serving:
+  risk_threshold_medium: 0.30
+  risk_threshold_high: 0.70
+
+monitoring:
+  # Conventional PSI bands from credit/fraud risk practice: heuristics, not
+  # properties of this dataset, kept in config so tightening an alert is not a
+  # code change.
+  #   < 0.10 stable | 0.10-0.25 moderate | > 0.25 significant
+  psi_stable_below: 0.10
+  psi_moderate_below: 0.25
+  n_bins: 10
+  # Rows sampled per period; PSI is stable well below the full 472k rows.
+  sample_rows: 60000
+  # Caveat: PSI above ~10 comes from high-cardinality categoricals where a level
+  # appears in one period and not the other, at which point the epsilon floor
+  # dominates. Treat categorical PSI as a ranking, not a distance.

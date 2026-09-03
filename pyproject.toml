@@ -1,0 +1,41 @@
+[project]
+name = "fraud-detection-platform"
+version = "0.1.0"
+description = "Production fraud detection and ML decision platform (IEEE-CIS)"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM", "ARG", "PTH", "RET"]
+ignore = [
+    "E501",   # line length is enforced by the formatter, not the linter
+    "B905",   # zip(strict=) not needed for py311 target consistency
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ARG001", "ARG002"]
+# sys.path bootstrap must precede local imports in standalone scripts.
+"scripts/*" = ["E402", "I001"]
+# B008 flags function calls in argument defaults, but `Depends(...)` in a
+# signature default is FastAPI's documented dependency-injection idiom — the
+# call is evaluated once at import and is the intended behaviour.
+"api/*" = ["B008"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "slow: tests that train models or read the full dataset",
+    "integration: tests requiring Postgres/Redis/MLflow services",
+]
+
+[tool.coverage.run]
+source = ["src", "api"]
+omit = ["*/__init__.py"]

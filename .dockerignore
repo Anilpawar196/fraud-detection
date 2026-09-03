@@ -1,0 +1,42 @@
+# Keep the build context small and the image free of data.
+# data/ and models/ are excluded entirely: the model artifact is bind-mounted at
+# run time (docker run -v ./models:/app/models:ro), not baked into the image.
+
+.git/
+.github/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+data/
+models/
+mlruns/
+mlartifacts/
+reports/
+notebooks/
+docs/
+tests/
+scripts/
+
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+.env
+*.log
+*.parquet
+*.csv
+*.pkl
+*.db
+
+README.md
+# requirements.txt is deliberately NOT ignored: the Dockerfile copies it to
+# install runtime dependencies. It was excluded while the image built from a
+# separate requirements-api.txt; that file was removed during simplification,
+# and leaving this entry behind broke the build with "/requirements.txt: not found".
+requirements-dev.txt
