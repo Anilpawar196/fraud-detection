@@ -40,3 +40,7 @@ README.md
 # separate requirements-api.txt; that file was removed during simplification,
 # and leaving this entry behind broke the build with "/requirements.txt: not found".
 requirements-dev.txt
+
+# Include trained model in Render Docker image
+!models/
+!models/model_artifact.pkl
