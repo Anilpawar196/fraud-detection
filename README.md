@@ -21,7 +21,7 @@ the comparison is internally consistent; the shipped model differs — see below
 
 ## Results
 
-**Shipped model:** LightGBM, 547 features, trained on all 472,432 modelling rows,
+**Shipped model:** XGBoost, 547 features, trained on all 472,432 modelling rows,
 isotonic-calibrated, **untuned**.
 
 | metric | value |
@@ -287,27 +287,27 @@ reflects whatever was executed last, so the table here is the canonical record.
 
 > **This table compares model *classes* on the 530-feature configuration**, with
 > every model on identical folds — so the ranking is valid and internally
-> consistent. The **shipped** model is untuned LightGBM on 547 features
+> consistent. The **shipped** model is untuned XGBoost on 547 features
 > (0.5591 ± 0.0195 CV), after `D*_anchored` was dropped as an input and re-used as
 > an entity key; see
-> [Final Model](#final-model). Only LightGBM was rerun on the new feature set, as
+> [Final Model](#final-model). Only XGBoost was rerun on the new feature set, as
 > the removal decision concerns the shipped model rather than which algorithm wins.
 
 | model | CV PR-AUC | lift | ROC-AUC | precision | recall | F1 | Brier | P@top 1% | train time |
 |---|---|---|---|---|---|---|---|---|---|
-| **LightGBM (tuned)** | **0.5754 ± 0.0239** | **15.91×** | 0.8967 | 0.6684 | 0.4862 | 0.5616 | 0.0227 | 0.9238 | 2960.6 s |
-| LightGBM (baseline) | 0.5583 ± 0.0225 | 15.45× | 0.8838 | 0.6766 | 0.4692 | 0.5533 | 0.0236 | 0.9268 | 638.9 s |
-| XGBoost | 0.5370 ± 0.0211 | 14.83× | 0.8754 | 0.6675 | 0.4515 | 0.5381 | 0.0242 | 0.9172 | 1579.6 s |
+| **XGBoost (tuned)** | **0.5754 ± 0.0239** | **15.91×** | 0.8967 | 0.6684 | 0.4862 | 0.5616 | 0.0227 | 0.9238 | 2960.6 s |
+| XGBoost (baseline) | 0.5583 ± 0.0225 | 15.45× | 0.8838 | 0.6766 | 0.4692 | 0.5533 | 0.0236 | 0.9268 | 638.9 s |
+| LightGBM | 0.5370 ± 0.0211 | 14.83× | 0.8754 | 0.6675 | 0.4515 | 0.5381 | 0.0242 | 0.9172 | 1579.6 s |
 | Random Forest | 0.4677 ± 0.0404 | 12.82× | 0.8819 | 0.5415 | 0.4049 | 0.4604 | 0.0966 | 0.8295 | 185.1 s |
 | Logistic Regression | 0.3560 ± 0.0703 | 9.62× | 0.8328 | 0.4462 | 0.3661 | 0.4018 | 0.1400 | 0.7151 | 115.0 s |
 
-**Boosting is measured to be better, not assumed** — untuned LightGBM beats Random
+**Boosting is measured to be better, not assumed** — untuned XGBoost beats Random
 Forest by +0.091 PR-AUC and Logistic Regression by +0.202.
 
 **Two challengers were run and both lost.**
 
-*XGBoost* — 0.5370 against LightGBM's 0.5583, winning 1 of 5 folds at 2.1× the
-training cost. Given a search space mirrored to LightGBM's, the same native
+*LightGBM* — 0.5370 against XGBoost's 0.5583, winning 1 of 5 folds at 2.1× the
+training cost. Given a search space mirrored to XGBoost's, the same native
 categorical handling, the same folds and the same early-stopping rule, so the
 comparison reflects the algorithms rather than the setup. The margin is close to
 the fold-to-fold spread (±0.021), so it is a consistent but modest loss; the
@@ -327,7 +327,7 @@ Both are kept in the repository as losses. A comparison in which the challenger
 always wins says nothing about the methodology.
 
 **ROC-AUC hides most of that gap.** Random Forest reaches 0.8819 against untuned
-LightGBM's 0.8838 — a **0.002** difference — while the PR-AUC gap is **0.091**,
+XGBoost's 0.8838 — a **0.002** difference — while the PR-AUC gap is **0.091**,
 roughly fifty times larger. With ~570k negatives in the FPR denominator, ROC-AUC
 barely registers the false-positive volume separating these models. Selecting on
 ROC-AUC would have called them equivalent. This is the in-repo demonstration of
@@ -337,8 +337,8 @@ why PR-AUC is the selection metric at 3.5% prevalence.
 0.0404 → 0.0703 down the untuned table. Logistic Regression is not merely worse on
 average, it is ~3× more volatile across time periods.
 
-**Calibration separates the tree models further:** Brier 0.0236 (LightGBM) vs
-0.0966 (RF) vs 0.1400 (LogReg) — RF is 4× worse calibrated than LightGBM despite
+**Calibration separates the tree models further:** Brier 0.0236 (XGBoost) vs
+0.0966 (RF) vs 0.1400 (LogReg) — RF is 4× worse calibrated than XGBoost despite
 near-identical ROC-AUC. This matters because the API serves probabilities, not
 only rankings.
 
@@ -354,10 +354,10 @@ So the boosters were rerun **at the baselines' row count**
 
 | | value |
 |---|---|
-| LightGBM at 100k rows | 0.5556 (vs 0.5583 at full data) |
-| Cost of subsampling to LightGBM | **0.0027** |
-| LightGBM margin over Random Forest | **0.0879** — **33× larger** |
-| LightGBM margin over Logistic Regression | 0.1996 — 74× larger |
+| XGBoost at 100k rows | 0.5556 (vs 0.5583 at full data) |
+| Cost of subsampling to XGBoost | **0.0027** |
+| XGBoost margin over Random Forest | **0.0879** — **33× larger** |
+| XGBoost margin over Logistic Regression | 0.1996 — 74× larger |
 
 **The ranking is not an artefact of training-set size.** Fold 0 is identical in
 both runs because its training window holds 46,274 rows, below the cap — which
@@ -372,7 +372,7 @@ the question without needing it.
 
 ## Final Model
 
-**LightGBM**, **untuned**, isotonic-calibrated, trained on all 472,432 modelling
+**XGBoost**, **untuned**, isotonic-calibrated, trained on all 472,432 modelling
 rows with **547 features**.
 
 The interesting part is what happened to 15 of them.
@@ -558,7 +558,7 @@ is the signature of information genuinely available elsewhere rather than a
 unique signal being lost, which is consistent with the ablation costing only
 0.0115 PR-AUC.
 
-Ten of the top 30 are engineered here. Mean |SHAP| is preferred over LightGBM's
+Ten of the top 30 are engineered here. Mean |SHAP| is preferred over XGBoost's
 split-count importance because it is in units of model output and is consistent
 between the global ranking and the per-transaction explanation the API returns —
 the same number explains both.
@@ -584,7 +584,7 @@ not endpoints.
 **Input contract.** Requiring all ~430 raw columns would make the API unusable, so
 the schema names the high-signal fields and accepts the long tail through one
 `extra_features` map. Anything omitted becomes NaN — a genuine capability, since
-the model is a LightGBM trained on data that is 43% missing across the V block.
+the model is an XGBoost model trained on data that is 43% missing across the V block.
 `extra="forbid"` catches typo'd fields, validation failures return a structured
 422, and a missing model yields 503 rather than 500.
 
@@ -599,7 +599,7 @@ docker run -p 8000:8000 -v "$(pwd)/models:/app/models:ro" fraud-api
 ```
 
 Multi-stage build: wheels compile in a builder stage so gcc stays out of the
-shipped image; `libgomp1` is installed for LightGBM's OpenMP threading; the
+shipped image; `libgomp1` is installed for XGBoost's OpenMP threading; the
 service runs as a non-root user (uid 10001) with a `HEALTHCHECK` on `/health`.
 
 The model artifact is **bind-mounted, not baked in** — otherwise every retrain
@@ -704,7 +704,7 @@ pytest -q
 schema-faithful synthetic fixtures (`tests/conftest.py`) reproducing the real
 column families, dtypes, missingness patterns, chronological ordering with ties,
 and ~3.5% prevalence with genuine signal. That is deliberate: CI exercises real
-code paths — including training a small LightGBM and scoring it through the API —
+code paths — including training a small XGBoost model and scoring it through the API —
 on a machine with no access to a 1.3 GB Kaggle download.
 
 | file | focus |
@@ -747,7 +747,7 @@ IEEE-CIS CSVs
      ↓  src/data/validation.py   fail-loud schema + chronology invariants
      ↓  src/features/            prepare → fit → transform (the leakage boundary)
      ↓  src/data/splitting.py    20% chronological holdout + purged folds
-     ↓  src/models/              LogReg · RandomForest · LightGBM + Optuna
+     ↓  src/models/              LogReg · RandomForest · XGBoost + Optuna
      ↓  src/evaluation/          PR-AUC, ROC-AUC, alert budgets, calibration
      ↓  src/explainability/      SHAP global + per-transaction
      ↓  models/model_artifact.pkl   model + pipeline + calibrator + threshold
@@ -859,7 +859,7 @@ direct cost of choices made deliberately elsewhere.
 
 5. **Dense baselines are subsampled** to 100,000 rows (all positives kept). The
    comparison is not perfectly equal — though rerunning the boosters at the same
-   row count showed the cap costs LightGBM 0.0027 against a 0.0879 margin over
+   row count showed the cap costs XGBoost 0.0027 against a 0.0879 margin over
    Random Forest, so the ranking is not an artefact of it.
 
 6. **Single-node, single-worker.** No horizontal scaling, A/B routing or shadow
