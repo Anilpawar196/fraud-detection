@@ -1,6 +1,5 @@
 # Leakage-Safe Fraud Detection Platform
 
-[![CI](https://github.com/sam200530/mlops/actions/workflows/ci.yml/badge.svg)](https://github.com/sam200530/mlops/actions/workflows/ci.yml)
 
 A fraud detection system on the [IEEE-CIS](https://www.kaggle.com/c/ieee-fraud-detection)
 dataset, built around one question: **how do you know your validation number is real?**
