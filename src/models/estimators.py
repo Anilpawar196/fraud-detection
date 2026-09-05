@@ -196,7 +196,6 @@ def xgboost_params(
         "reg_lambda": 1.0,
         "max_bin": 127,
         "n_estimators": 2000,
-        "early_stopping_rounds": 100,
         "random_state": seed,
         "n_jobs": n_jobs,
         "verbosity": 0,
@@ -335,6 +334,7 @@ def fit_with_early_stopping(
     if model_name == "xgboost":
         # early_stopping_rounds and eval_metric are set on the constructor in
         # the XGBoost 2.x+ sklearn API; categoricals come from the dtype.
+        model.set_params(early_stopping_rounds=EARLY_STOPPING_ROUNDS)
         model.fit(X_train, y_train, eval_set=[(X_eval, y_eval)], verbose=False)
         return int(getattr(model, "best_iteration", 0) or 0)
 

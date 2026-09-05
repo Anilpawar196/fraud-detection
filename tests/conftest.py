@@ -189,6 +189,7 @@ def trained_artifact(prepared_frame: pd.DataFrame):
     import xgboost as xgb
 
     from src.evaluation.calibration import ProbabilityCalibrator
+    from src.evaluation.metrics import compute_metrics
     from src.features.pipeline import FeaturePipeline
     from src.models.artifact import ArtifactMetadata, ModelArtifact, utc_now_iso
 
@@ -218,6 +219,9 @@ def trained_artifact(prepared_frame: pd.DataFrame):
     model.fit(X_train, y_train)
 
     validation_probabilities = model.predict_proba(pipeline.transform(validation_df))[:, 1]
+    validation_metrics = compute_metrics(
+        validation_df["isFraud"].to_numpy(), validation_probabilities, threshold=0.5
+    )
     calibrator = None
     if validation_df["isFraud"].nunique() > 1:
         candidate = ProbabilityCalibrator().fit(
@@ -242,6 +246,12 @@ def trained_artifact(prepared_frame: pd.DataFrame):
             n_train_rows=len(train_df),
             dataset_rows_total=len(prepared_frame),
             holdout_cut_dt=int(prepared_frame["TransactionDT"].max()),
+            hyperparameters={
+                key: model.get_params()[key]
+                for key in ("learning_rate", "max_depth", "min_child_weight")
+            },
+            holdout_metrics=validation_metrics.to_flat_dict(),
+            calibrated=calibrator is not None,
             raw_input_columns=raw_columns,
         ),
     )

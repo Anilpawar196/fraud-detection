@@ -130,6 +130,12 @@ class ModelArtifact:
             artifact = pickle.load(handle)
         if not isinstance(artifact, ModelArtifact):
             raise TypeError(f"{target} does not contain a ModelArtifact")
+        metadata_path = target.with_name(METADATA_FILENAME)
+        if metadata_path.is_file():
+            sidecar = json.loads(metadata_path.read_text(encoding="utf-8"))
+            current = artifact.metadata.to_dict()
+            current.update(sidecar)
+            artifact.metadata = ArtifactMetadata(**current)
         logger.info(
             "Loaded %s artifact trained %s (%d features)",
             artifact.metadata.model_name,

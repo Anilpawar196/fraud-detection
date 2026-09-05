@@ -54,9 +54,16 @@ class FeatureContribution:
 class ShapExplainer:
     """Wraps ``shap.TreeExplainer`` with the plumbing this project needs."""
 
-    def __init__(self, model: Any, feature_names: list[str]) -> None:
+    def __init__(
+        self,
+        model: Any,
+        feature_names: list[str] | pd.DataFrame,
+        model_name: str | None = None,
+    ) -> None:
         self.explainer = shap.TreeExplainer(model)
+        self._background = feature_names if isinstance(feature_names, pd.DataFrame) else None
         self.feature_names = list(feature_names)
+        self.model_name = model_name
         self._base_value: float | None = None
 
     @property
@@ -85,7 +92,13 @@ class ShapExplainer:
             values = values[:, :, -1]
         return values
 
-    def global_importance(self, X: pd.DataFrame) -> pd.DataFrame:
+    def explain_sample(self, X: pd.DataFrame) -> np.ndarray:
+        """Return SHAP values for one sample."""
+        if len(X) != 1:
+            raise ValueError("explain_sample expects exactly one row")
+        return self.shap_values(X)[0]
+
+    def global_importance(self, X: pd.DataFrame | None = None) -> pd.DataFrame:
         """Mean absolute SHAP value per feature, descending.
 
         Mean |SHAP| is preferred over LightGBM's built-in split-count or gain
@@ -93,6 +106,10 @@ class ShapExplainer:
         between the global and local views the API exposes — the same number
         explains the ranking and the individual prediction.
         """
+        if X is None:
+            if self._background is None:
+                raise ValueError("X is required when no background frame was provided")
+            X = self._background
         values = self.shap_values(X)
         importance = pd.DataFrame(
             {

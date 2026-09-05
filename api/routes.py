@@ -193,5 +193,8 @@ def explain(
         top_factors=[
             FeatureContributionResponse(**contribution.to_dict()) for contribution in contributions
         ],
+        shap_values=[
+            FeatureContributionResponse(**contribution.to_dict()) for contribution in contributions
+        ],
         latency_ms=round((time.perf_counter() - started) * 1000, 2),
     )

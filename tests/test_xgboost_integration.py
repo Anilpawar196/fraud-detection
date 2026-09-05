@@ -138,15 +138,15 @@ class TestXGBoostCalibration:
         X_fit = pipeline.transform(prepared_frame.iloc[:cut])
         y_fit = prepared_frame.iloc[:cut]["isFraud"].to_numpy()
 
-        X_val = pipeline.transform(prepared_frame.iloc[cut : cut + 100])
-        y_val = prepared_frame.iloc[cut : cut + 100]["isFraud"].to_numpy()
+        X_val = pipeline.transform(prepared_frame.iloc[cut:])
+        y_val = prepared_frame.iloc[cut:]["isFraud"].to_numpy()
 
         model = build_model("xgboost", seed=42, n_jobs=1, n_estimators=10)
         model.fit(X_fit, y_fit)
         raw_proba = model.predict_proba(X_val)[:, 1]
 
         calibrator = ProbabilityCalibrator(method="isotonic")
-        calibrator.fit(raw_proba, y_val)
+        calibrator.fit(y_val, raw_proba)
         calibrated_proba = calibrator.transform(raw_proba)
 
         assert calibrated_proba.shape == raw_proba.shape
@@ -215,9 +215,9 @@ class TestXGBoostSHAP:
         assert importance_df is not None
         assert len(importance_df) > 0
         assert "feature" in importance_df.columns
-        assert "importance" in importance_df.columns
+        assert "mean_abs_shap" in importance_df.columns
         # Higher importance for earlier ranked features
-        assert importance_df["importance"].iloc[0] >= importance_df["importance"].iloc[-1]
+        assert importance_df["mean_abs_shap"].iloc[0] >= importance_df["mean_abs_shap"].iloc[-1]
 
 
 class TestXGBoostAPIIntegration:

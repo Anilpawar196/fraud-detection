@@ -125,6 +125,7 @@ class ExplanationResponse(BaseModel):
     model_version: str
     base_value: float = Field(description="Model output for an average input, in log-odds.")
     top_factors: list[FeatureContributionResponse]
+    shap_values: list[FeatureContributionResponse]
     latency_ms: float
 
 
