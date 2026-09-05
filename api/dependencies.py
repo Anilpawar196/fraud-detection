@@ -79,7 +79,7 @@ def build_prepared_frame(
 
     Materialises every raw column the pipeline reads, filling anything the caller
     omitted with NaN — a real capability rather than a shortcut, since the model
-    is a tree ensemble (XGBoost, LightGBM, or similar) trained on data that is 
+    is a tree ensemble (XGBoost, LightGBM, or similar) trained on data that is
     43% missing across the V block and routes missing values natively.
     """
     columns = artifact.metadata.raw_input_columns or []

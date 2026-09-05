@@ -10,14 +10,13 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import pytest
 
 from src.evaluation.calibration import ProbabilityCalibrator
-from src.features.pipeline import FeaturePipeline
-from src.models.artifact import ModelArtifact, ArtifactMetadata
-from src.models.estimators import build_model, fit_with_early_stopping
 from src.explainability.shap_explainer import ShapExplainer
+from src.features.pipeline import FeaturePipeline
+from src.models.artifact import ModelArtifact
+from src.models.estimators import build_model, fit_with_early_stopping
 
 
 class TestXGBoostTraining:
@@ -85,9 +84,7 @@ class TestXGBoostTraining:
 class TestXGBoostArtifact:
     """Verify the model artifact bundles everything correctly for XGBoost."""
 
-    def test_xgboost_artifact_serializes_and_deserializes(
-        self, api_client
-    ) -> None:
+    def test_xgboost_artifact_serializes_and_deserializes(self, api_client) -> None:
         """Full artifact round-trip must preserve the model state."""
         from api.dependencies import state
 
@@ -103,9 +100,7 @@ class TestXGBoostArtifact:
             assert loaded.metadata.n_features == state.artifact.metadata.n_features
             assert loaded.decision_threshold == state.artifact.decision_threshold
 
-    def test_xgboost_artifact_metadata_contains_hyperparameters(
-        self, api_client
-    ) -> None:
+    def test_xgboost_artifact_metadata_contains_hyperparameters(self, api_client) -> None:
         """Metadata must record the hyperparameters used."""
         from api.dependencies import state
 
@@ -228,7 +223,9 @@ class TestXGBoostSHAP:
 class TestXGBoostAPIIntegration:
     """Verify full API workflow with XGBoost model."""
 
-    def test_predict_endpoint_with_xgboost_model(self, api_client, valid_transaction_payload) -> None:
+    def test_predict_endpoint_with_xgboost_model(
+        self, api_client, valid_transaction_payload
+    ) -> None:
         """API must return valid predictions from XGBoost."""
         response = api_client.post("/predict", json=valid_transaction_payload)
         assert response.status_code == 200
@@ -236,7 +233,9 @@ class TestXGBoostAPIIntegration:
         assert "fraud_probability" in body
         assert 0.0 <= body["fraud_probability"] <= 1.0
 
-    def test_explain_endpoint_returns_shap_values(self, api_client, valid_transaction_payload) -> None:
+    def test_explain_endpoint_returns_shap_values(
+        self, api_client, valid_transaction_payload
+    ) -> None:
         """Explain endpoint must return SHAP-based feature contributions."""
         response = api_client.post("/explain", json=valid_transaction_payload)
         assert response.status_code == 200
@@ -270,7 +269,9 @@ class TestXGBoostAPIIntegration:
 class TestXGBoostDriftMonitoring:
     """Verify drift monitoring works with XGBoost model predictions."""
 
-    def test_prediction_probability_range_valid(self, api_client, valid_transaction_payload) -> None:
+    def test_prediction_probability_range_valid(
+        self, api_client, valid_transaction_payload
+    ) -> None:
         """Predictions must stay within [0, 1] for monitoring."""
         for _ in range(10):
             response = api_client.post("/predict", json=valid_transaction_payload)
