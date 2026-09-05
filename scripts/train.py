@@ -71,7 +71,7 @@ from src.utils.seed import set_seed  # noqa: E402
 
 logger = logging.getLogger("train")
 
-DEFAULT_MODELS = ("logistic_regression", "random_forest", "lightgbm", "xgboost")
+DEFAULT_MODELS = ("logistic_regression", "random_forest", "xgboost")
 
 #: Row cap for models needing a dense imputed matrix. Logistic Regression and
 #: Random Forest cannot take NaN, so they are fitted on a dense one-hot matrix

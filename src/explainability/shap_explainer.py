@@ -1,4 +1,4 @@
-"""SHAP explanations for the LightGBM model.
+"""SHAP explanations for tree ensemble fraud models.
 
 Serves two distinct audiences:
 

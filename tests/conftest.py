@@ -186,7 +186,7 @@ def fitted_pipeline(prepared_frame: pd.DataFrame):
 @pytest.fixture
 def trained_artifact(prepared_frame: pd.DataFrame):
     """A real, small ModelArtifact — trained here so serving tests are end-to-end."""
-    import lightgbm as lgb
+    import xgboost as xgb
 
     from src.evaluation.calibration import ProbabilityCalibrator
     from src.features.pipeline import FeaturePipeline
@@ -201,16 +201,21 @@ def trained_artifact(prepared_frame: pd.DataFrame):
     X_train = pipeline.transform(train_df)
     y_train = train_df["isFraud"].to_numpy()
 
-    model = lgb.LGBMClassifier(
+    model = xgb.XGBClassifier(
         n_estimators=40,
-        num_leaves=15,
+        max_depth=8,
         learning_rate=0.1,
-        min_child_samples=20,
+        min_child_weight=5,
+        colsample_bytree=0.6,
+        subsample=0.8,
         random_state=SEED,
         n_jobs=1,
-        verbose=-1,
+        verbosity=0,
+        enable_categorical=True,
+        tree_method="hist",
+        eval_metric="aucpr",
     )
-    model.fit(X_train, y_train, categorical_feature=pipeline.categorical_features)
+    model.fit(X_train, y_train)
 
     validation_probabilities = model.predict_proba(pipeline.transform(validation_df))[:, 1]
     calibrator = None
@@ -230,7 +235,7 @@ def trained_artifact(prepared_frame: pd.DataFrame):
         calibrator=calibrator,
         decision_threshold=0.5,
         metadata=ArtifactMetadata(
-            model_name="lightgbm",
+            model_name="xgboost",
             trained_at=utc_now_iso(),
             seed=SEED,
             n_features=len(pipeline.feature_names),

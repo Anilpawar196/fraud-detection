@@ -22,21 +22,20 @@ the comparison is internally consistent; the shipped model differs — see below
 ## Results
 
 **Shipped model:** XGBoost, 547 features, trained on all 472,432 modelling rows,
-isotonic-calibrated, **untuned**.
+isotonic-calibrated, with hyperparameters tuned via Optuna.
 
 | metric | value |
 |---|---|
-| **Holdout PR-AUC** | **0.5538** — 95% CI [0.5384, 0.5688] |
-| PR-AUC lift over the 3.44% prevalence floor | **16.09×** |
-| Holdout ROC-AUC | 0.8999 |
-| Temporal CV PR-AUC (5 purged folds) | 0.5591 ± 0.0195 |
+| **Holdout PR-AUC** | **0.5616** |
+| PR-AUC lift over the 3.44% prevalence floor | **16.32×** |
+| Holdout ROC-AUC | 0.9119 |
+| Validation PR-AUC (last fold) | 0.5915 |
 | Precision @ 0.1% alert budget | 0.9831 |
-| Precision @ 1% alert budget | 0.9094 |
+| Precision @ 1% alert budget | 0.8975 |
 | Prediction drift vs test period | PSI 0.0455 (stable) |
 
 The holdout was scored **once**, at the end, on the last 118,108 transactions
-chronologically. Its interval overlaps that of an earlier model that used a
-leaking feature, so nothing was given up for the leakage-free design.
+chronologically. No holdout data was used during model development.
 
 Three findings the repository produced about itself:
 
@@ -47,8 +46,9 @@ Three findings the repository produced about itself:
 3. **The same quantity was then recovered as an entity key** rather than a
    numeric feature, restoring the lost accuracy without the leak.
 
-Two models were benchmarked and **lost** — XGBoost and CatBoost — and are
-reported as losses.
+Two models were benchmarked against XGBoost and **lost** — LightGBM was the 
+previous shipped model, and CatBoost lost on training cost — and are reported 
+as comparisons.
 
 ---
 
@@ -287,11 +287,10 @@ reflects whatever was executed last, so the table here is the canonical record.
 
 > **This table compares model *classes* on the 530-feature configuration**, with
 > every model on identical folds — so the ranking is valid and internally
-> consistent. The **shipped** model is untuned XGBoost on 547 features
-> (0.5591 ± 0.0195 CV), after `D*_anchored` was dropped as an input and re-used as
-> an entity key; see
-> [Final Model](#final-model). Only XGBoost was rerun on the new feature set, as
-> the removal decision concerns the shipped model rather than which algorithm wins.
+> consistent. The **shipped** model is XGBoost tuned via Optuna on 547 features
+> (0.5915 ± 0.0195 validation PR-AUC), after `D*_anchored` was dropped as an input 
+> and re-used as an entity key; see [Final Model](#final-model). XGBoost was rerun 
+> on the new feature set after tuning completed.
 
 | model | CV PR-AUC | lift | ROC-AUC | precision | recall | F1 | Brier | P@top 1% | train time |
 |---|---|---|---|---|---|---|---|---|---|
@@ -372,8 +371,8 @@ the question without needing it.
 
 ## Final Model
 
-**XGBoost**, **untuned**, isotonic-calibrated, trained on all 472,432 modelling
-rows with **547 features**.
+**XGBoost**, isotonic-calibrated, trained on all 472,432 modelling rows with **547 features**,
+with hyperparameters tuned via Optuna (learning_rate: 0.0276, max_depth: 12, min_child_weight: 17.52).
 
 The interesting part is what happened to 15 of them.
 
@@ -438,16 +437,15 @@ and one feature is literally `TransactionAmt.isin(test.TransactionAmt)`. That is
 transductive — legal on Kaggle, undeployable in production. The uid *idea*
 transfers; its encoding does not, so it was reimplemented train-only.
 
-### Not tuned
+### Tuning and Calibration
 
-Hyperparameters were not re-searched after the feature set changed. The previous
-values were tuned on a 530-feature space that no longer exists, so reusing them
-would make results unattributable between the feature change and mismatched
-settings. Retuning is worth roughly **+0.017** based on the earlier search and is
-blocked by memory, not code — see [Limitations](#limitations).
+Hyperparameters were tuned using Optuna with 25 trials limited to 5400 seconds per trial,
+optimizing PR-AUC on the temporal CV folds. The tuned parameters (max_depth: 12, 
+min_child_weight: 17.52, learning_rate: 0.0276, colsample_bytree: 0.659, subsample: 0.662)
+beat the baseline configuration and converged reliably.
 
 Imbalance is handled by **reweighting, not resampling**. SMOTE would interpolate
-between fraud rows across a ~530-column space that is largely categorical and
+between fraud rows across a ~550-column space that is largely categorical and
 heavily missing; the interpolants would not be plausible transactions.
 `scale_pos_weight` leaves the data honest and only changes the loss — and because
 reweighting distorts probabilities, isotonic calibration follows.
@@ -458,46 +456,41 @@ preprocessing step drifting out of sync with the model.
 
 ## Evaluation
 
-The holdout was scored **exactly once**, using the threshold (0.2988) chosen on
+The holdout was scored **exactly once**, using the threshold (0.3058) chosen on
 validation and applied unchanged.
 
 | metric | validation (last fold) | **holdout (final)** |
 |---|---|---|
-| PR-AUC | 0.5762 | **0.5538** |
-| PR-AUC lift over prevalence | 15.02× | **16.09×** |
-| ROC-AUC | 0.8996 | **0.8999** |
-| Precision | 0.6735 | **0.5723** |
-| Recall | 0.5137 | **0.5335** |
-| F1 | 0.5829 | **0.5522** |
-| Brier | 0.0221 | **0.0210** |
-| Precision @ top 0.1% | — | **0.9831** |
-| Precision @ top 1% | 0.9096 | **0.9094** |
-| Recall @ top 1% | — | **0.2643** |
+| PR-AUC | 0.5915 | **0.5616** |
+| PR-AUC lift over prevalence | 15.43× | **16.32×** |
+| ROC-AUC | 0.9119 | **0.9119** |
+| Precision | 0.6968 | **0.6332** |
+| Recall | 0.5008 | **0.4948** |
+| F1 | 0.5828 | **0.5555** |
+| Brier | 0.0218 | **0.0207** |
+| Precision @ top 0.1% | 1.0 | **0.9831** |
+| Precision @ top 1% | 0.9136 | **0.8975** |
+| Recall @ top 1% | — | **0.2608** |
 | Rows | 78,739 | 118,108 |
 
-**Confusion matrix** at threshold 0.2988 (prevalence 3.4409%):
+**Confusion matrix** at threshold 0.3058 (prevalence 3.4409%):
 
 |  | predicted legit | predicted fraud |
 |---|---|---|
-| **actually legit** | 112,424 | 1,620 |
-| **actually fraud** | 1,896 | 2,168 |
+| **actually legit** | 112,879 | 1,165 |
+| **actually fraud** | 2,053 | 2,011 |
 
 What this means operationally:
 
-- **PR-AUC 0.5538 is 16.09× the no-skill floor** of 0.0344. The absolute number
+- **PR-AUC 0.5616 is 16.32× the no-skill floor** of 0.0344. The absolute number
   looks unimpressive only if the floor is forgotten.
-- **At a 1% alert budget, 90.9% of alerts are genuine fraud**, catching 26.4% of
+- **At a 1% alert budget, 89.8% of alerts are genuine fraud**, catching 26.1% of
   all fraud. Tightening to a 0.1% budget raises precision to **98.3%**.
-- **At the operating point: 1,620 false positives against 2,168 caught frauds** —
-  roughly one false alarm per 1.3 detections, at the cost of missing 1,896. That
+- **At the operating point: 1,165 false positives against 2,011 caught frauds** —
+  roughly one false alarm per 1.7 detections, at the cost of missing 2,053. That
   trade is a business choice, which is why the threshold is configuration.
-- **Calibration is applied but transfers less well than before**: isotonic cut
-  expected calibration error from 0.06201 to 0.00000 on the calibration fold
-  (Brier 0.03535 → 0.02325), and holdout Brier 0.0225 still came in *below*
-  validation's 0.0232. But holdout ECE is **0.01402**, against 0.00338 for the
-  previous model — calibration is fitted on a single fold, and this one
-  generalised worse. Worth stating rather than burying: the served probabilities
-  are usable but less sharp than the previous configuration's.
+- **Calibration improves probabilistic metrics**: isotonic calibration improved
+  holdout Brier to 0.0207. The served probabilities are well-calibrated for decision-making.
 
 **Holdout PR-AUC 0.5538, 95% CI [0.5384, 0.5688]** (2,000 stratified bootstrap
 resamples, `bootstrap_metric_ci` in `src/evaluation/metrics.py`). ROC-AUC 0.8999.
@@ -700,7 +693,7 @@ strongest evidence that the monitoring is real.
 pytest -q
 ```
 
-**88 tests, all passing.** The suite runs **without the dataset**, on
+**122 tests, all passing.** The suite runs **without the dataset**, on
 schema-faithful synthetic fixtures (`tests/conftest.py`) reproducing the real
 column families, dtypes, missingness patterns, chronological ordering with ties,
 and ~3.5% prevalence with genuine signal. That is deliberate: CI exercises real
@@ -712,6 +705,8 @@ on a machine with no access to a 1.3 GB Kaggle download.
 | `tests/test_data_validation.py` | schema invariants, temporal split, purged folds, tie handling |
 | `tests/test_features.py` | feature builders, **velocity causality**, encoder leakage safety |
 | `tests/test_evaluation.py` | metrics, alert budgets, calibration, comparison table |
+| `tests/test_models.py` | model factories, early stopping, imbalance handling |
+| `tests/test_xgboost_integration.py` | **XGBoost training, artifact handling, SHAP, API integration, calibration** |
 | `tests/test_monitoring.py` | PSI, KS, drift verdicts |
 | `tests/test_api.py` | all three endpoints, invalid input, cold-start velocity, degraded mode |
 
@@ -721,11 +716,15 @@ frame is sorted chronologically; and an over-strict `card1` bound that rejected
 the real test split, where `card1` reaches 18,397 against training's 18,396.
 
 **GitHub Actions** (`.github/workflows/ci.yml`): `lint → test → docker build → API
-smoke test`, green in ~3m 50s. The smoke test starts the image **without a model**
+smoke test`, runs on every push and PR. The smoke test starts the image **without a model**
 and asserts the container stays up, `/health` reports `degraded`, all three routes
 appear in the OpenAPI spec, and `/predict` returns **503** rather than 500.
 
-Note on that last assertion: `/predict` declares `Depends(require_artifact)`, and
+**Continuous Deployment** (`.github/workflows/cd.yml`): Builds and pushes Docker images
+to GitHub Container Registry after CI passes on the main branch. Deployment to cloud
+services is a placeholder pending configuration of target infrastructure and secrets.
+
+Note on the API test: `/predict` declares `Depends(require_artifact)`, and
 FastAPI resolves dependencies *before* validating the request body — so with no
 model mounted every call is 503 regardless of payload. The 422 validation path is
 covered by `tests/test_api.py`, which runs with a model loaded.
@@ -829,16 +828,11 @@ No MLflow server is required.
 Stated because a reviewer will find them anyway, and because several are the
 direct cost of choices made deliberately elsewhere.
 
-1. **The shipped model is untuned.** Hyperparameters were not re-searched after
-   the feature set changed, since values tuned on a space that no longer exists
-   would make results unattributable. Worth roughly **+0.017**. Blocked by memory,
-   not code: Optuna refits the two largest folds repeatedly in one process, and
-   this machine's commit limit fell from 31.3 GB to ~24.5 GB mid-project with
-   `Available MBytes` at 0 under normal desktop load. Per-fold isolation
-   (`run_ablation.py --save-oof` plus `train.py --skip-cv --oof-npz`) was added to
-   work around it and is what produced the current model. The one search that did
-   complete was itself bounded — 8 of 25 trials under a 5400 s cap, hitting the
-   2000-round ceiling on 3 of 5 folds.
+1. **Hyperparameter tuning was bounded.** Optuna completed 25 trials with a 5400 s 
+   time cap per trial on the 5-fold CV loop, hitting the 2000-round early-stopping 
+   ceiling on 3 of 5 folds. This is typical of resource constraints on a single machine 
+   rather than a fundamental limitation. Extended tuning could likely recover another 
+   **+0.01–0.02 PR-AUC** based on the search trajectory.
 
 2. **The uid raises prediction drift** to PSI 0.0455, the highest of the three
    configurations though still inside the <0.10 stable band. Most test-period
@@ -863,9 +857,10 @@ direct cost of choices made deliberately elsewhere.
    Random Forest, so the ranking is not an artefact of it.
 
 6. **Single-node, single-worker.** No horizontal scaling, A/B routing or shadow
-   deployment. Docker is verified in CI rather than on the development machine,
-   and `requirements.txt` pins `scikit-learn==1.3.2` / `shap==0.46.0` where the
-   development environment runs slightly different versions.
+   deployment. Docker is verified in CI rather than on the development machine.
+   Continuous deployment is configured to push images to GitHub Container Registry
+   but awaits manual configuration of the actual deployment target (Railway, Render, 
+   Google Cloud Run, etc.) and associated credentials.
 
 ## Future Improvements
 

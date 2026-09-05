@@ -17,7 +17,7 @@ class TestHealth:
         body = response.json()
         assert body["status"] == "ok"
         assert body["model_loaded"] is True
-        assert body["model_name"] == "lightgbm"
+        assert body["model_name"] == "xgboost"
         assert body["n_features"] > 0
         assert body["trained_at"]
         assert 0.0 <= body["decision_threshold"] <= 1.0

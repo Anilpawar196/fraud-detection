@@ -30,7 +30,8 @@ ENV PYTHONUNBUFFERED=1 \
     FRAUD_PROJECT_ROOT=/app \
     PYTHONPATH=/app
 
-# libgomp1 is a runtime requirement of LightGBM's OpenMP threading.
+# libgomp1 is a runtime requirement of tree model libraries' OpenMP threading
+# (LightGBM, XGBoost, CatBoost).
 # curl is used by the healthcheck.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libgomp1 \

@@ -56,7 +56,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
 app = FastAPI(
     title="Leakage-Safe Fraud Detection API",
     description=(
-        "Serves a LightGBM fraud model trained on the IEEE-CIS dataset with "
+        "Serves an XGBoost fraud model trained on the IEEE-CIS dataset with "
         "leakage-safe temporal validation. Returns calibrated probabilities and "
         "SHAP explanations."
     ),

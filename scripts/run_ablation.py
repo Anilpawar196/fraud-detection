@@ -42,7 +42,7 @@ def main() -> int:
         default=None,
         help="Save this fold's out-of-fold probabilities (.npy) for calibration.",
     )
-    parser.add_argument("--model", default="lightgbm")
+    parser.add_argument("--model", default="xgboost")
     parser.add_argument(
         "--force-subsample",
         type=int,

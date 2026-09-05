@@ -7,12 +7,12 @@ Three families, each with a distinct job in the comparison:
   complexity is not earning its keep. It also reveals how much of the signal is
   simply linear.
 * **Random Forest** — the bagging contrast. Non-linear and interaction-capable
-  but, unlike LightGBM, it cannot route NaN structurally, so it must be given
+  but, unlike tree boosters, it cannot route NaN structurally, so it must be given
   imputed inputs. That difference is itself informative about how much of
-  LightGBM's advantage comes from native missing-value handling.
-* **LightGBM** — the candidate for production. Native categorical support,
+  tree booster advantage comes from native missing-value handling.
+* **XGBoost** — the shipped production model. Native categorical support,
   native NaN routing, and the only one of the three that is fast enough at
-  590,540 × ~550 to tune properly.
+  590,540 × ~550 to tune properly. Tuned via Optuna for PR-AUC maximization.
 
 Imbalance is handled by **reweighting, not resampling**. SMOTE would interpolate
 between fraud rows across a ~550-column space that is largely categorical and
